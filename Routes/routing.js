@@ -8,8 +8,8 @@ router.get("/name/:name", getName, async (req, res) => {
   res.send(req.user);
 });
 
-router.get("/email/:email", validateUser, async (req, res) => {
-  res.send(req.user);
+router.get("/email/:email", getEmail, async (req, res) => {
+  res.send(req.user.email);
 });
 
 router.get("/id/:id", getUser, async (req, res) => {
@@ -25,32 +25,24 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.patch('/:id',getUser,async(req,res)=>{
-  if(req.body.name){
+router.patch("/:id", getUser, async (req, res) => {
+  if (req.body.name) {
     req.user.name = req.body.name;
   }
-  if(req.body.email){
+  if (req.body.email) {
     req.user.email = req.body.email;
   }
-  if(req.body.password){
+  if (req.body.password) {
     req.user.password = req.body.password;
   }
 
-  try{
+  try {
     await req.user.save();
-    res.status(200).json({message:"user updated successfully"});
-
-  }catch(e){
-    res.status(400).json({message:"Could not update user"});
+    res.status(200).json({ message: "user updated successfully" });
+  } catch (e) {
+    res.status(400).json({ message: "Could not update user" });
   }
-})
-
-// router.post("/", (req, res) => {
-
-//   } else {
-    
-//   }
-// });
+});
 
 async function getEmail(req, res, next) {
   const { email } = req.params;
@@ -81,46 +73,39 @@ async function getName(req, res, next) {
   req.user = user;
   next();
 }
+router.post("/", async (req, res) => {
+  if (
+    !req.body.email.includes("@") ||
+    !req.body.email.includes(".") ||
+    req.body.password.length < 7
+  ) {
+    res
+      .status(422)
+      .json({ message: "Invalid email and password must be > 7 characters " });
+  } else {
+    try {
+      const newUser = new userModel({
+        name: req.body.name,
+        email: req.body.email,
+        password: req.body.password,
+      });
 
-async function validateUser(req,res,next){
-  // if (!req.body.name || !req.body.email || !req.body.password) {
-  //   res.json({ message: "Enter all the fields" });
-  const {email} = req.params;
-  let user;
-  try{
-    user = await userModel.findOne({email:email}, function(err, user){
-      if(err){
-        const newUser = new userModel({
-          name: req.body.name,
-          email: req.body.email,
-          password: req.body.password,
+      await newUser
+        .save()
+        .then(() => {
+          res.status(200).json({ message: "new user has been added" });
+        })
+        .catch(() => {
+          res.status(500).json({ message: "Server error" });
         });
-    
-        newUser.save(function (err, result) {
-          if (err) {
-            res.status(404).json({ message: "could not add a new user" });
-          } else {
-            res.status(200).json({ message: "user added successfully" });
-          }
-        });
-      }
-      else{
-        res.json({message:"User already exists"});
-      }
-    });
-    
-  }catch(e){
-    res.status(500).json({message:"server error"})
+    } catch (error) {
+      res.status(500).json({ message: "Server error" });
+    }
   }
-  req.user = user;
-  next();
-}
-}
-
+});
 
 
 async function getUser(req, res, next) {
-  
   let user;
   try {
     user = await userModel.findById(req.params.id);
